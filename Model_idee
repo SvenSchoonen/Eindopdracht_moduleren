@@ -1,0 +1,25 @@
+Ontwerp model van cellular automaton van kanker. 
+Met behulp van The agent-based cellular automaton model
+Tijdens elke iteratie activeert een tumorcel verplicht een van de vier gebeurtenissen: apoptose, proliferatie, migratie of rust. Deze evenementen zijn tijdelijk exclusief
+
+cellular automaton(CA) diffrent start scenarios
+
+normale cell of als het niet-klonogeen, klonogeen of stam is.
+Agent-base # individuele cellen en verschillende types van cellen en staand van de cel.
+- Model voor losse cell met param # pre clinice data van andere studies.
+- Model voor cellen onderling # pre clince data 
+- Use stochastic cellular automata (SCA), for randomize for cell mutations
+- 
+
+cellular automaton # cell interactie in 3d grid
+- Model voor interactie tussen omliggende cellen.
+- Functie voor beweging cellen.
+- Heatmap of the maked blood vessels that interact with the cells position. # Bloedarmoede en doorgaven tussen cellen en relatie tot ontstaan van kanker dit word gedaan door oxigen
+
+
+Gebruikte modelen in onderzochte studies.
+- Markov-kernel  model # om transitie waarschijnelijkheid te bereken 
+- 
+
+Ander concept:
+VEGF bloodvat maken door tumor 

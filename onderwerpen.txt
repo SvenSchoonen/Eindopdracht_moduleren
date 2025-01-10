@@ -1,0 +1,8 @@
+Instestante onderwerpen:
+
+- 1 Cancer Early Detection through Multi-Omics and Statistical Modeling
+- 2 Evaluating the Impact of Lifestyle Factors on Cancer Prevalence Using Statistical Model, 
+- 3 Development and Evaluation of a Personalized Cancer Risk Prediction Model Using Machine Learning: A Focus on Genetic, Environmental, and Lifestyle Factors
+- 4 Tumor Evolution and Clonal Dynamics
+- 5 Artificial Intelligence in Radiogenomics
+- 6 Cellular Level and want to calculate the tumor growth and treatment response, and resistance. 

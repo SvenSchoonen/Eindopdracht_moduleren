@@ -1,0 +1,40 @@
+{
+  "grid_size": [3, 3, 3],
+  "cell_types": {
+    "normal": 0,
+    "tumor": 1,
+    "stem": 2,
+    "quiescent": 3,
+    "dead": -1
+  },
+  "parameters": {
+    "normal": {
+      "proliferation_rate": 0.3,
+      "max_division_rate": 0.5
+    },
+    "tumor": {
+      "proliferation_rate": 1.5,
+      "max_division_rate": 3.0
+    },
+    "stem": {
+      "proliferation_rate": 1.0,
+      "max_division_rate": 2.0
+    },
+    "quiescent": {
+      "proliferation_rate": 0.01,
+      "max_division_rate": 0.02
+    },
+    "dead": {
+      "proliferation_rate": 0,
+      "max_division_rate": 0
+    },
+    "migration_rate": 0.05,
+    "apoptosis_rate": 0.05,
+    "quiescence_rate": 0.05,
+    "mutation_rate": 0.01
+  },
+  "simulation": {
+    "steps": 1,
+    "visualize": false
+  }
+}
