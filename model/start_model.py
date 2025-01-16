@@ -22,7 +22,7 @@ class Cell:
         self.alive = True
         self.age = 0 # iteration
         self.mutation_count = 0  # Tracks the number of mutations the cell has undergone 
-        self.state = 0  # 0 = v1 1 = v2, 2= v3, 3 = v4
+        self.state = 0  # 0 = v1 1 = v2, 2= v3, 3 = v4 
 
     def apoptose():
         return False

@@ -1,14 +1,13 @@
 {
   "grid_size": [9, 9, 9],
-  "vessel_size": [2, 2, 2],
-  "vessel_place" : [2,2] ,
-  "vessel_thickness" : 3,
+  "vessel_place": [2, 2],
+  "vessel_thickness": [2, 2],
   "cell_types": {
     "normal": 0,
     "tumor": 1,
     "stem": 2,
     "quiescent": 3,
-    "vessel":4,
+    "vessel": 4,
     "dead": -1
   },
   "parameters": {
