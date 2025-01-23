@@ -75,26 +75,27 @@ class Cell:
                     empty_cells_interest[(nx, ny, nz)].append((x, y, z))
         return empty_cells_interest
 
+
 def initialize_grid(grid_size, cell_types, normal_ratio=0.5, tumor_ratio=0.1, stem_ratio=0.05, empty_cell_ratio=0.4):
     grid = np.empty(grid_size, dtype=object)
     total_probability = normal_ratio + tumor_ratio + stem_ratio + empty_cell_ratio
     if total_probability < 1:
         print("Total_probability of cells does not add up to 1.")
-    for x in range(grid_size[0]):
-        for y in range(grid_size[1]):
-            for z in range(grid_size[2]):
-                rand_value = random.random()
-                if rand_value < normal_ratio:
-                    cell_type = cell_types["normal"]
-                elif rand_value < tumor_ratio + normal_ratio:
-                    cell_type = cell_types["tumor"]
-                elif rand_value < stem_ratio + tumor_ratio + normal_ratio:
-                    cell_type = cell_types["stem"]
-                elif rand_value < empty_cell_ratio + stem_ratio + tumor_ratio + normal_ratio:
-                    cell_type = cell_types["empty_cell"]
-                else:
-                    cell_type = cell_types["dead"]
-                grid[x, y, z] = Cell(cell_type, (x, y, z))
+
+    positions = np.mgrid[0:grid_size[0], 0:grid_size[1], 0:grid_size[2]].reshape(3, -1).T
+    for x, y, z in positions:
+        rand_value = random.random()
+        if rand_value < normal_ratio:
+            cell_type = cell_types["normal"]
+        elif rand_value < tumor_ratio + normal_ratio:
+            cell_type = cell_types["tumor"]
+        elif rand_value < stem_ratio + tumor_ratio + normal_ratio:
+            cell_type = cell_types["stem"]
+        elif rand_value < empty_cell_ratio + stem_ratio + tumor_ratio + normal_ratio:
+            cell_type = cell_types["empty_cell"]
+        else:
+            cell_type = cell_types["dead"]
+        grid[x, y, z] = Cell(cell_type, (x, y, z))
     return grid
 
 def make_bloodvessel_grid(blood_vessel_place, grid_size, vessel_thickness):
@@ -112,12 +113,13 @@ def calc_distance_vertical_vessel(grid_size, blood_vessel_grid):
     vessel_positions = np.argwhere(blood_vessel_grid == cell_types["vessel"])
     if vessel_positions.size == 0:
         raise ValueError("No blood vessels found in the grid!")
+
+    grid_positions = np.mgrid[0:grid_size[0], 0:grid_size[1], 0:grid_size[2]].reshape(3, -1).T
     distance_grid = np.full(grid_size, np.inf)
-    for x in range(grid_size[0]):
-        for y in range(grid_size[1]):
-            for z in range(grid_size[2]):
-                distances = np.sqrt(((vessel_positions - [x, y, z]) ** 2).sum(axis=1))
-                distance_grid[x, y, z] = np.min(distances)
+
+    for pos in grid_positions:
+        distances = np.sqrt(((vessel_positions - pos) ** 2).sum(axis=1))
+        distance_grid[tuple(pos)] = np.min(distances)
     return distance_grid
 
 def create_simulation_grid():
@@ -187,6 +189,20 @@ def vessel_cell(cell, grid, cell_types, distance_grid):
                 target_pos = random.choice(list(empty_cells.keys()))
                 grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["vessel"], target_pos)
 
+def add_medicine(grid, effect_type, factor):
+    if effect_type == 'vessel_growth':
+        # Reduce vessel growth rate
+        return grid * (1 - factor)  # Example: decreases proliferation by factor
+    elif effect_type == 'cell_death':
+        # Increase cell death rate
+        mask = np.random.rand(*grid.shape) < factor
+        grid[mask] = 0  # Cells die in the affected regions
+    elif effect_type == 'resistance':
+        # Increase resistance probability
+        resistance_chance = np.random.rand(*grid.shape)
+        grid[resistance_chance < factor] += 1  # Resistance markers increase
+    return grid
+
 # Data collection for prediction
 data = []
 labels = []
@@ -253,30 +269,23 @@ def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
 def visualize_blood_vessel_and_mutations(grid, blood_vessel_grid, cell_types, distance_grid, step):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    x_vals = []
-    y_vals = []
-    z_vals = []
-    colors = []
 
-    for x in range(grid.shape[0]):
-        for y in range(grid.shape[1]):
-            for z in range(grid.shape[2]):
-                cell = grid[x, y, z]
-                if cell.alive:
-                    x_vals.append(x)
-                    y_vals.append(y)
-                    z_vals.append(z)
-                    if cell.cell_type == cell_types["vessel"]:
-                        color = (1, 0, 0)  # red for vessel
-                    else:
-                        color = (1, 1, 1)  # grey for others
-                    colors.append(color)
-                # Show mutations by increasing the size of mutated tumor cells
-                if cell.cell_type == cell_types["tumor"] and cell.mutation_count > 0:
-                    ax.scatter(x, y, z, c='black', marker='o', s=50 + cell.mutation_count * 10)
-    
+    positions = np.mgrid[0:grid.shape[0], 0:grid.shape[1], 0:grid.shape[2]].reshape(3, -1).T
+    x_vals, y_vals, z_vals, colors = [], [], [], []
+
+    for x, y, z in positions:
+        cell = grid[x, y, z]
+        if cell.alive:
+            x_vals.append(x)
+            y_vals.append(y)
+            z_vals.append(z)
+            color = (1, 0, 0) if cell.cell_type == cell_types["vessel"] else (1, 1, 1)
+            colors.append(color)
+            if cell.cell_type == cell_types["tumor"] and cell.mutation_count > 0:
+                ax.scatter(x, y, z, c='black', marker='o', s=50 + cell.mutation_count * 10)
+
     ax.scatter(x_vals, y_vals, z_vals, c=colors, marker='o')
-    ax.set_title(step,": Blood Vessels and Tumor Mutations")
+    ax.set_title(f"Step {step}: Blood Vessels and Tumor Mutations")
     plt.show()
 
 
@@ -390,5 +399,7 @@ for step in range(10):  # Run simulation for 10 steps
     simulation_step(grid, blood_vessel_grid, cell_types=None, distance_grid=distance_grid, step=step)
     # Prediction using KNN
     predict_next_step_knn(grid, knn_model)
+     if step == 5:  # Apply medicine at step 5
+        add_medicine(grid, blood_vessel_grid, effect_type='cell_death', factor=0.3)
 
 
