@@ -219,7 +219,7 @@ def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
     "vessel": 4,
     "empty_cell": 5,
     "dead": -1
-	}
+    }
     for z in range(grid.shape[2]):
         for x in range(grid.shape[0]):
             for y in range(grid.shape[1]):
@@ -241,9 +241,11 @@ def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
                         cell.alive = False
                     else:
                         alive_cell_count += 1
-
+    config = load_config()
     collect_data(grid, step)  # Collect data for prediction
-    print(f"Alive Cells: {alive_cell_count}, Tumor Cells: {tumor_cell_count}, Vessel Cells: {vessel_cell_count}")
+    grid_size = config["grid_size"]
+    totaal =  grid_size[0] * grid_size[1] * grid_size[2]
+    print("Alive Cells:", alive_cell_count, "Tumor Cells: " ,tumor_cell_count, "Vessel Cells: ", vessel_cell_count, "Totaal cells: " , totaal)
     return alive_cell_count, tumor_cell_count, vessel_cell_count
 
 
@@ -364,7 +366,7 @@ def train_rl_agent(grid, agent):
         for x in range(grid.shape[0]):
             for y in range(grid.shape[1]):
                 for z in range(grid.shape[2]):
-                    cell = grid[x, y, z]	
+                    cell = grid[x, y, z]    
                     state = cell.state
                     action = agent.choose_action(state)
                     

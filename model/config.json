@@ -1,5 +1,5 @@
 {
-  "grid_size": [4,4,4],
+  "grid_size": [15,15,15],
   "vessel_place": [1, 1],
   "vessel_thickness": [1, 1],
   "cell_types": {
