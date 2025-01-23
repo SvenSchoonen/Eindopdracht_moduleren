@@ -1,13 +1,14 @@
 {
-  "grid_size": [9, 9, 9],
-  "vessel_place": [2, 2],
-  "vessel_thickness": [2, 2],
+  "grid_size": [4,4,4],
+  "vessel_place": [1, 1],
+  "vessel_thickness": [1, 1],
   "cell_types": {
     "normal": 0,
     "tumor": 1,
     "stem": 2,
     "quiescent": 3,
     "vessel": 4,
+    "empty_cell": 5,
     "dead": -1
   },
   "parameters": {
@@ -39,5 +40,11 @@
   "simulation": {
     "steps": 1,
     "visualize": false
+  },
+  "transition_probabilities": {
+    "normal": {"normal": 0.7, "tumor": 0.1, "stem": 0.1, "vessel": 0.1},
+    "tumor": {"normal": 0.1, "tumor": 0.6, "stem": 0.2, "vessel": 0.1},
+    "stem": {"normal": 0.3, "tumor": 0.3, "stem": 0.2, "vessel": 0.2},
+    "vessel": {"normal": 0.1, "tumor": 0.1, "stem": 0.2, "vessel": 0.6}
   }
 }
