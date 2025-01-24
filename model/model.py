@@ -24,20 +24,27 @@ def load_config(file_path="config.json"):
         config = json.load(f)
     return config
 
+config = load_config()
+
 class Cell:
     def __init__(self, cell_type, position):
         self.cell_type = cell_type
         self.position = position
         self.alive = True
-        self.age = 0
+        self.state = 0  # 0: resting, 1: growing, 2: dividing
         self.mutation_count = 0
-        self.state = random.randint(0, 3)  # random state (0 = rest, 1 = growing, 2 = dividing)
+        self.mutations = []  # Track mutation history
+        self.age = 0
 
     def apoptose(self):
-        return random.random() < 0.05
+        config = load_config()
+        apoptosis_rate = config["parameters"]["apoptosis_rate"] 
+        return random.random() < apoptosis_rate
 
     def proliferate(self):
-        return random.random() < 0.3
+        config = load_config()
+        proliferation_rate = config["parameters"]["normal"]["proliferation_rate"]
+        return random.random() < proliferation_rate 
 
     def rest(self):
         pass
@@ -46,14 +53,19 @@ class Cell:
         neighbors = self.check_neighbors(grid, cell_types)
         empty_neighbors = [pos for pos in neighbors if grid[pos] == cell_types["empty_cell"]]
         if empty_neighbors:
-            new_position = random.choice(empty_neighbors)
-            grid[new_position] = self.cell_type
+            target_pos = random.choice(empty_neighbors)
+            # Update the grid and the cell's position
+            grid[target_pos] = Cell(self.cell_type, target_pos)
             grid[self.position] = cell_types["empty_cell"]
-            self.position = new_position
-
+            self.position = target_pos
+    
     def mutate(self):
-        if random.random() < 0.01:
-            self.mutation_count += 1  # Increment mutation count
+        mutation_type = random.choice(["aggressive", "less_aggressive"])
+        if mutation_type == "aggressive":
+            self.mutation_count += 1
+        elif mutation_type == "less_aggressive" and self.mutation_count > 0:
+            self.mutation_count -= 1
+        self.mutations.append(mutation_type)
 
     def check_neighbors(self, grid, cell_types):
         empty_cells_interest = {}
@@ -76,7 +88,7 @@ class Cell:
         return empty_cells_interest
 
 
-def initialize_grid(grid_size, cell_types, normal_ratio=0.5, tumor_ratio=0.1, stem_ratio=0.05, empty_cell_ratio=0.4):
+def initialize_grid(grid_size, cell_types, normal_ratio=0.5, tumor_ratio=0.1, stem_ratio=0.01, empty_cell_ratio=0.4):
     grid = np.empty(grid_size, dtype=object)
     total_probability = normal_ratio + tumor_ratio + stem_ratio + empty_cell_ratio
     if total_probability < 1:
@@ -102,7 +114,7 @@ def make_bloodvessel_grid(blood_vessel_place, grid_size, vessel_thickness):
     blood_vessel_grid = np.zeros(grid_size, dtype=int)
     x, y = blood_vessel_place
     vessel_x, vessel_y = vessel_thickness
-    for z in range(grid_size[2]):
+    for z in range(grid_size[2]):# always max length
         for dx in range(vessel_x):
             for dy in range(vessel_y):
                 if (x + dx < grid_size[0]) and (y + dy < grid_size[1]):
@@ -138,44 +150,33 @@ def create_simulation_grid():
 def normal_cell(cell, grid, cell_types):
     if cell.state == 0:  # Resting phase
         cell.rest()
-   
     elif cell.state == 1:  # Growing state
-        empty_cells = cell.check_neighbors(grid, cell_types)
-        if empty_cells:
-            target_pos = random.choice(list(empty_cells.keys()))
-            if random.random() < 0.3:  # 30% chance to proliferate
-                grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["normal"], target_pos)
-       
-        # Mutation possibility
+        if random.random() < 0.3:  # 30% chance to proliferate
+            cell.migrate(grid)
         cell.mutate()
+    elif cell.state == 2:  # Dividing state
+        cell.migrate(grid)
    
     elif cell.state == 2:  
         cell.migrate(grid)
 
 def tumor_cell(cell, grid, cell_types, blood_vessel_grid, distance_grid):
     if random.random() < 0.4:  # Tumor cells are more likely to proliferate (40%)
-        empty_cells = cell.check_neighbors(grid, cell_types)
-        if empty_cells:
-            target_pos = random.choice(list(empty_cells.keys()))
-            grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["tumor"], target_pos)
-   
-    if random.random() < 0.2:  # 20% chance to mutate and become more aggressive
-        cell.mutation_count += 1
-   
+        cell.migrate(grid)
+    if random.random() < 0.2:  # 20% chance to mutate
+        cell.mutate()
     x, y, z = cell.position
     if distance_grid[x, y, z] < 2:  # Tumor cells near blood vessels (distance < 2)
         if random.random() < 0.9:  # 90% chance to proliferate near a blood vessel
-            empty_cells = cell.check_neighbors(grid, cell_types)
-            if empty_cells:
-                target_pos = random.choice(list(empty_cells.keys()))
-                grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["tumor"], target_pos)
+            cell.migrate(grid)
+
 
 def stem_cell(cell, grid, cell_types):
     if random.random() < 0.5:  # 50% chance to proliferate (divide)
         empty_cells = cell.check_neighbors(grid, cell_types)
         if empty_cells:
             target_pos = random.choice(list(empty_cells.keys()))
-            grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["stem"], target_pos)
+            grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["normal"], target_pos) # makes a normal cell
    
     if random.random() < 0.3:  # 30% chance to migrate
         cell.migrate(grid)
@@ -189,7 +190,7 @@ def vessel_cell(cell, grid, cell_types, distance_grid):
                 target_pos = random.choice(list(empty_cells.keys()))
                 grid[target_pos[0], target_pos[1], target_pos[2]] = Cell(cell_types["vessel"], target_pos)
 
-def add_medicine(grid, effect_type, factor):
+def add_medicine(grid, blood_vessel_grid, effect_type, factor):
     if effect_type == 'vessel_growth':
         # Reduce vessel growth rate
         return grid * (1 - factor)  # Example: decreases proliferation by factor
@@ -203,27 +204,8 @@ def add_medicine(grid, effect_type, factor):
         grid[resistance_chance < factor] += 1  # Resistance markers increase
     return grid
 
-# Data collection for prediction
-data = []
-labels = []
 
-def collect_data(grid, step):
-    step_data = []
-    for x in range(grid.shape[0]):
-        for y in range(grid.shape[1]):
-            for z in range(grid.shape[2]):
-                cell = grid[x, y, z]
-                cell_features = [
-                    x, y, z,  # Position
-                    cell.cell_type,  # Type of cell
-                    cell.mutation_count,  # Mutations
-                    cell.state,  # State
-                ]
-                step_data.append(cell_features)
-                labels.append(step + 1)  # Label the next step
-    data.extend(step_data)
-
-def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
+def simulation_step(grid, blood_vessel_grid, distance_grid, step):
     alive_cell_count = 0
     tumor_cell_count = 0
     vessel_cell_count = 0
@@ -258,7 +240,6 @@ def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
                     else:
                         alive_cell_count += 1
     config = load_config()
-    collect_data(grid, step)  # Collect data for prediction
     grid_size = config["grid_size"]
     totaal =  grid_size[0] * grid_size[1] * grid_size[2]
     print("Alive Cells:", alive_cell_count, "Tumor Cells: " ,tumor_cell_count, "Vessel Cells: ", vessel_cell_count, "Totaal cells: " , totaal)
@@ -266,140 +247,90 @@ def simulation_step(grid, blood_vessel_grid, cell_types, distance_grid, step):
 
 
 
-def visualize_blood_vessel_and_mutations(grid, blood_vessel_grid, cell_types, distance_grid, step):
+def visualize_blood_vessel_and_mutations(grid, step):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     positions = np.mgrid[0:grid.shape[0], 0:grid.shape[1], 0:grid.shape[2]].reshape(3, -1).T
-    x_vals, y_vals, z_vals, colors = [], [], [], []
+    x_vals, y_vals, z_vals, colors, sizes = [], [], [], [], []
 
     for x, y, z in positions:
         cell = grid[x, y, z]
-        if cell.alive:
+        if isinstance(cell, Cell) and cell.alive:
             x_vals.append(x)
             y_vals.append(y)
             z_vals.append(z)
-            color = (1, 0, 0) if cell.cell_type == cell_types["vessel"] else (1, 1, 1)
-            colors.append(color)
-            if cell.cell_type == cell_types["tumor"] and cell.mutation_count > 0:
-                ax.scatter(x, y, z, c='black', marker='o', s=50 + cell.mutation_count * 10)
 
-    ax.scatter(x_vals, y_vals, z_vals, c=colors, marker='o')
-    ax.set_title(f"Step {step}: Blood Vessels and Tumor Mutations")
+            if cell.cell_type == cell_types["vessel"]:
+                colors.append("red")  # Blood vessels
+            elif cell.cell_type == cell_types["tumor"]:
+                mutation_intensity = min(cell.mutation_count, 10)  # Limit size growth
+                sizes.append(50 + mutation_intensity * 10)
+                colors.append("black")
+            else:
+                colors.append("white")  # Normal cells
+                sizes.append(50)
+
+    ax.scatter(x_vals, y_vals, z_vals, c=colors, s=sizes, marker="o")
+    ax.set_title(f"Step {step}: Tumor Aggression and Vessels")
     plt.show()
 
+def visualize_grid(grid): 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
 
+    x_vals = []
+    y_vals = []
+    z_vals = []
+    colors = []
 
-def train_knn_predictive_model(grid):
-    data = []
-    labels = []
+    alive_cell_count = 0 
 
-    # Collecting features from the grid (position, cell_type, mutation_count, and state)
-    for x in range(grid.shape[0]):
-        for y in range(grid.shape[1]):
-            for z in range(grid.shape[2]):
-                cell = grid[x, y, z]
-                cell_features = [
-                    x, y, z,  # Position
-                    cell.cell_type,  # Type of cell
-                    cell.mutation_count,  # Mutations
-                    cell.state,  # State
-                ]
-                data.append(cell_features)
-                labels.append(cell.state)  # Predicting the next state
-    
-    data = np.array(data)
-    labels = np.array(labels)
-
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, random_state=42)
-
-    # Train KNN model
-    knn_model = KNeighborsClassifier(n_neighbors=3)
-    knn_model.fit(X_train, y_train)
-    
-    accuracy = knn_model.score(X_test, y_test)
-    print(f"KNN Model accuracy: {accuracy}")
-    return knn_model
-
-# KNN prediction
-def predict_next_step_knn(grid, model):
-    step_data = []
-    for x in range(grid.shape[0]):
-        for y in range(grid.shape[1]):
-            for z in range(grid.shape[2]):
-                cell = grid[x, y, z]
-                cell_features = [
-                    x, y, z,  # Position
-                    cell.cell_type,  # Type of cell
-                    cell.mutation_count,  # Mutations
-                    cell.state,  # State
-                ]
-                step_data.append(cell_features)
-    
-    predictions = model.predict(step_data)
-
-    # Update grid with predictions
-    pred_idx = 0
-    for x in range(grid.shape[0]):
-        for y in range(grid.shape[1]):
-            for z in range(grid.shape[2]):
-                grid[x, y, z].state = predictions[pred_idx]
-                pred_idx += 1
-    print("Predicted next step:", predictions[:10])
-
-
-
-class RLAgent:
-    def __init__(self, action_space, state_space, learning_rate=0.1, gamma=0.9):
-        self.action_space = action_space
-        self.state_space = state_space
-        self.learning_rate = learning_rate
-        self.gamma = gamma
-        self.q_table = np.zeros((len(state_space), len(action_space)))
-
-    def choose_action(self, state):
-        if random.uniform(0, 1) < 0.1:  # Exploration
-            return random.choice(self.action_space)
-        else:  # Exploitation
-            return np.argmax(self.q_table[state])
-
-    def update_q_table(self, state, action, reward, next_state):
-        best_next_action = np.argmax(self.q_table[next_state])
-        self.q_table[state, action] = (1 - self.learning_rate) * self.q_table[state, action] + \
-                                      self.learning_rate * (reward + self.gamma * self.q_table[next_state, best_next_action])
-
-def train_rl_agent(grid, agent):
-    # Interacts with the grid and learns based on state transitions
-    for episode in range(10):  # 10 times
+    for z in range(grid.shape[2]):
         for x in range(grid.shape[0]):
             for y in range(grid.shape[1]):
-                for z in range(grid.shape[2]):
-                    cell = grid[x, y, z]    
-                    state = cell.state
-                    action = agent.choose_action(state)
-                    
-                    next_state = (state + action) % 3  # Simplified state change
-                    reward = -1 if next_state == 0 else 1  # Reward based on the action
-                    
-                    agent.update_q_table(state, action, reward, next_state)
-                    cell.state = next_state  # Update cell state after the action
-    print("Training completed using RL agent")
+                cell = grid[x, y, z]
+               
+                if cell.alive:  # Only add alive cells to the plot
+                    x_vals.append(x)
+                    y_vals.append(y)
+                    z_vals.append(z)
 
+                    # Assign color based on cell type
+                    if cell.cell_type == cell_types["normal"]:
+                        colors.append('white')
+                    elif cell.cell_type == cell_types["tumor"]:
+                        colors.append('black')
+                    elif cell.cell_type == cell_types["stem"]:
+                        colors.append('blue')
+                    elif cell.cell_type == cell_types["vessel"]:
+                        colors.append('red')
+                    elif cell.cell_type == cell_types["empty_cell"]:
+                        colors.append('gray')  # Optional color for empty cells
+                    elif cell.cell_type == cell_types["dead"]:
+                        colors.append('gray')  # Optional color for dead cells
+
+                    alive_cell_count += 1  # Increment alive cell count
+
+    else:
+        # Plot the cells in 3D
+        ax.scatter(x_vals, y_vals, z_vals, c=colors)
+
+    # Show the plot
+    plt.show(),
+step = config["simulation"]["steps"]
 grid, blood_vessel_grid = create_simulation_grid()
 distance_grid = calc_distance_vertical_vessel(grid.shape, blood_vessel_grid)
 
-# Train models
-knn_model = train_knn_predictive_model(grid)
-
-
-# Main loop
-for step in range(10):  # Run simulation for 10 steps
-    print(f"Step {step + 1}")
-    simulation_step(grid, blood_vessel_grid, cell_types=None, distance_grid=distance_grid, step=step)
-    # Prediction using KNN
-    predict_next_step_knn(grid, knn_model)
-     if step == 5:  # Apply medicine at step 5
+for step in range(step):  # Run simulation for 10 steps
+    print("step", step)
+    
+    simulation_step(grid, blood_vessel_grid, distance_grid=distance_grid, step=step)
+    config = load_config() 
+    if config["simulation"]["visualize"] == True:
+        
+        visualize_grid(grid)
+    if step == 5:  # Apply medicine at step 5 still need fixing 
         add_medicine(grid, blood_vessel_grid, effect_type='cell_death', factor=0.3)
 
 

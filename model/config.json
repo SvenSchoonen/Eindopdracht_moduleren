@@ -1,6 +1,6 @@
 {
   "grid_size": [15,15,15],
-  "vessel_place": [1, 1],
+  "vessel_place": [5, 5],
   "vessel_thickness": [1, 1],
   "cell_types": {
     "normal": 0,
@@ -32,14 +32,15 @@
       "proliferation_rate": 0,
       "max_division_rate": 0
     },
+    
     "migration_rate": 0.05,
     "apoptosis_rate": 0.05,
     "quiescence_rate": 0.05,
     "mutation_rate": 0.01
   },
   "simulation": {
-    "steps": 1,
-    "visualize": false
+    "steps": 30,
+    "visualize": true
   },
   "transition_probabilities": {
     "normal": {"normal": 0.7, "tumor": 0.1, "stem": 0.1, "vessel": 0.1},

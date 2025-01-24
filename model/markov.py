@@ -23,14 +23,10 @@ class MarkovModel:
         self.transition_probabilities = self.calculate_transition_probabilities()
 
     def calculate_transition_probabilities(self):
-        """
-        Calculate transition probabilities dynamically based on the parameters in the configuration.
-        Includes support for 'empty_cell' state.
-        """
         transition_probabilities = {}
         for state, params in self.parameters.items():
             if state not in self.cell_types:
-                continue  # Skip invalid states
+                continue 
 
             # Define transition weights using state parameters
             proliferation_rate = params.get("proliferation_rate", 0)
@@ -60,7 +56,6 @@ class MarkovModel:
         return transition_probabilities
 
     def transition_state(self, current_state):
-        """Transition from the current state to the next state based on probabilities."""
         probabilities = self.transition_probabilities.get(current_state, {})
 
         next_state = random.choices(
