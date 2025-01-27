@@ -1,7 +1,6 @@
 import random
 import json
 import numpy as np
-import model  
 
 
 def load_config(config_file='config.json'):
@@ -23,17 +22,17 @@ class MarkovModel:
         self.transition_probabilities = self.calculate_transition_probabilities()
 
     def calculate_transition_probabilities(self):
+        """Calculate and normalize transition probabilities for each state."""
         transition_probabilities = {}
         for state, params in self.parameters.items():
             if state not in self.cell_types:
                 continue 
 
-            # Define transition weights using state parameters
             proliferation_rate = params.get("proliferation_rate", 0)
             max_division_rate = params.get("max_division_rate", 0)
             migration_rate = self.parameters.get("migration_rate", 0.05)
 
-            # Example logic for calculating transition probabilities
+            # Calculate base probabilities
             transition_probabilities[state] = {
                 "normal": proliferation_rate * 0.5,
                 "tumor": max_division_rate * 0.3,
@@ -42,21 +41,25 @@ class MarkovModel:
                 "empty_cell": migration_rate * 0.4,  
             }
 
-            # Normalize probabilities to ensure they sum up to 1
+            # Normalize probabilities
             total = sum(transition_probabilities[state].values())
             transition_probabilities[state] = {
                 k: v / total for k, v in transition_probabilities[state].items()
             }
 
-        # Special handling for 'empty_cell'
+        # Special handling for 'vessel'
         transition_probabilities["vessel"] = {
-            "vessel": 4.0 # vessel remains the same
+            "vessel": 1.0  # Vessel remains unchanged
         }
 
         return transition_probabilities
 
     def transition_state(self, current_state):
+        """Perform a state transition based on current state probabilities."""
         probabilities = self.transition_probabilities.get(current_state, {})
+
+        if not probabilities:
+            return current_state  # No transition defined, stay in current state
 
         next_state = random.choices(
             population=list(probabilities.keys()), 
@@ -65,24 +68,16 @@ class MarkovModel:
         )[0]
         return next_state
 
+    def predict_grid(self, grid):
+        """Predict the next states for the entire grid."""
+        new_grid = np.copy(grid)  # Create a copy to store the new states
 
-if __name__ == "__main__":
-    print("Simulation starts...")
+        for x in range(grid.shape[0]):
+            for y in range(grid.shape[1]):
+                for z in range(grid.shape[2]):
+                    current_state = grid[x, y, z]
+                    # Predict the next state using the Markov model
+                    next_state = self.transition_state(current_state)
+                    new_grid[x, y, z] = next_state
 
-    # Load and initialize the Markov model
-    model_instance = MarkovModel(config_file='config.json')
-
-    # Create simulation grid and calculate the distance grid
-    grid, blood_vessel_grid = model.create_simulation_grid()
-    distance_grid = model.calc_distance_vertical_vessel(grid.shape, blood_vessel_grid)
-
-    # Run the simulation for defined steps
-    for step in range(10):
-        print(step + 1)
-
-        # Simulate a single grid cell's state change for demonstration
-        current_state = "empty_cell"  # Example current state
-        next_state = model_instance.transition_state(current_state)
-        print(f"Current state: {current_state} -> Next state: {next_state}")
-
- 
+        return new_grid

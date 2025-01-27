@@ -1,7 +1,8 @@
 {
   "grid_size": [15,15,15],
-  "vessel_place": [5, 5],
-  "vessel_thickness": [1, 1],
+  "vessel_place": [7, 7],
+  "vessel_thickness": [4, 4],
+  "vessel_grow" : 0.5,
   "cell_types": {
     "normal": 0,
     "tumor": 1,
@@ -12,17 +13,22 @@
     "dead": -1
   },
   "parameters": {
+	  "max_age": 10,
     "normal": {
       "proliferation_rate": 0.3,
       "max_division_rate": 0.5
     },
     "tumor": {
-      "proliferation_rate": 1.5,
-      "max_division_rate": 3.0
+      "proliferation_rate": 0.4,
+      "max_division_rate": 3.0,
+      "migrate_rate" : 0.4,
+      "blood_vessel_depency" : 0.8,
+      "mutate_rate" : 0.1
     },
     "stem": {
       "proliferation_rate": 1.0,
-      "max_division_rate": 2.0
+      "max_division_rate": 2.0,
+      "migrate_rate": 0.8
     },
     "quiescent": {
       "proliferation_rate": 0.01,
@@ -39,8 +45,9 @@
     "mutation_rate": 0.01
   },
   "simulation": {
-    "steps": 30,
-    "visualize": true
+    "steps": 120,
+    "visualize": true,
+    "medicine" : false
   },
   "transition_probabilities": {
     "normal": {"normal": 0.7, "tumor": 0.1, "stem": 0.1, "vessel": 0.1},
